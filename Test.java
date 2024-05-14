@@ -61,30 +61,30 @@ public class Test {
         return transferStations;
     }
 
-    public List<String> queryStations(String stationName, double maxDistance) 
+    public String queryStationsFormatted(String stationName, double maxDistance)
     {
         List<String> result = new ArrayList<>();
-        for (Map<String, Double> lineMap : map.values()) 
+        for (Map<String, Double> lineMap : map.values())
         {
-            for (Map.Entry<String, Double> entry : lineMap.entrySet())
+            for (Map.Entry<String, Double> entry : lineMap.entrySet()) 
             {
                 if (entry.getKey().equals(stationName)) 
                 {
                     for (Map.Entry<String, Double> otherEntry : lineMap.entrySet())
                     {
-                        if (!entry.getKey().equals(otherEntry.getKey()))
+                        if (!entry.getKey().equals(otherEntry.getKey())) 
                         {
                             double distance = entry.getValue() + otherEntry.getValue();
                             if (distance <= maxDistance) 
                             {
-                                result.add(otherEntry.getKey() + " -- " + entry.getKey() + " -- " + distance);
+                                result.add("<"+otherEntry.getKey()+"，" + line+" 号线， "+ distance+">");
                             }
                         }
                     }
                 }
             }
         }
-        return result;
+        return result.isEmpty() ? "没有找到距离为 " + maxDistance + " 公里以内的站点。" : result.toString();
     }
     @Override
     public String toString()
@@ -140,6 +140,30 @@ public class Test {
         }
         
         //第二问
-       
+        Scanner scanner = new Scanner(System.in);
+        try 
+        {
+        	System.out.print("请输入站点名称: ");
+            String stationNameInput = scanner.nextLine().trim();
+
+            System.out.print("请输入最大距离（公里）: ");
+            if (!scanner.hasNextDouble()) {
+                System.out.println("输入的最大距离不合法，请输入一个数字！");
+                scanner.close();
+                return;
+            }
+            double maxDistance = scanner.nextDouble();
+            scanner.nextLine(); // 消耗掉nextDouble后的换行符
+            
+            String formattedResult = subwayMap.queryStationsFormatted(stationNameInput, maxDistance);
+            System.out.println(stationNameInput+"，最大距离为 "+maxDistance+" 的站点为:");
+            System.out.println(formattedResult);
+            scanner.close();
+        } 
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        
+        }
     }
 }
