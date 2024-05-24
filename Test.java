@@ -1,243 +1,175 @@
 package subwaysystem;
-import java.io.BufferedReader;
-import java.io.FileReader;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-public class Test {
-    private Map<String, Map<String, Double>> map;
-    private Map<String, Map<String, Node>> map2;
-    public Test() 
-    {
-        this.map = new LinkedHashMap<>();
-        this.map2 = new LinkedHashMap<>();
+public class Test
+{
+	private List<Route> routes;
+	
+	public Test() 
+	{
+		this.routes= new ArrayList <Route> ();
+	}
+	
+	private void readFile() 
+	{
+    	try 
+    	{
+    		Scanner s = new Scanner(new File("subway.txt"));
+    		int rankLine = 0;
+    		while (s.hasNext()) 
+    		{
+    			String line =s.nextLine();
+    			if(line.contains("线")) 
+    			{
+    			    Route r  = new Route();
+    			    r.setName(line.substring(0,(line.indexOf("线")) + 1));
+    			    this.routes.add(r);
+    			    rankLine++;  
+    			}
+    			if(line.contains("---")||line.contains("—"))
+    			{
+    				setIntervals(this.routes.get(rankLine-1), line);
+    			} 
+    		}
+    		s.close();
+    	}
+    	catch (NullPointerException e) 
+    	{
+    		e.printStackTrace();
+		}
+    	catch(IOException e){
+    		e.printStackTrace();
+    	}
     }
+	
+	 /**
+		 * set an interval from the read line
+		 * @param r the route
+		 * @param l the read string
+		 * @throws IOException
+		 */
+		private void setIntervals(Route r, String l) throws IOException  
+		{
+		    String separator = l.contains("---") ? "---" : "—";
+			String[] s1 = l.split(separator);
+			String[] s2 = s1[1].split("\t");
+			Interval in = new Interval(s1[0], s2[0], Double.valueOf(s2[1]));
+			r.getIntevals().add(in);
+		}
+		
+		  private List<TransferStation> identifyTransferStations() 
+		  {
+		        Map<String, List<String>> stationToLines = new HashMap<>();
+		        List<TransferStation> transferStations = new ArrayList<>();
 
-    public void addLine(String lineName)
-    {
-        map.put(lineName, new LinkedHashMap<>());
-    }
-    public void addLine2(String lineName)
-    {
-        map2.put(lineName, new LinkedHashMap<>());
-    }
-    
-    public void addStation(String lineName, String stationName, double distance) 
-    {
-        map.get(lineName).put(stationName, distance);
-    }
-    public void addStation2(String lineName, String stationName,double distance) {
-		Node node = new Node(stationName, distance);
-        map2.get(lineName).put(stationName, node);
-        // 假设每条线路上的站点是顺序相连的，这里只添加直接相邻的站点
-        if (map2.get(lineName).size() > 1) {
-            String prevStation = map2.get(lineName).keySet().toArray(new String[0])[map2.get(lineName).size() - 2];
-            map2.get(lineName).get(prevStation).neighbors.add(node);
-            node.neighbors.add(map2.get(lineName).get(prevStation));
-        }
-    }
+		        for (Route route : this.routes)
+		        {
+		            String currentLine = route.getName();
+		            for (Interval interval : route.getIntevals()) 
+		            {
+		                for (int i = 0; i < interval.getStops().length; i++) 
+		                {
+		                    String stationName = interval.getStops()[i];
+		                    // 如果站点还没有被记录过，或者当前线路不在站点已有的线路列表中，则添加线路
+		                    if (!stationToLines.containsKey(stationName) || !stationToLines.get(stationName).contains(currentLine)) 
+		                    {
+		                        if (!stationToLines.containsKey(stationName)) 
+		                        {
+		                            stationToLines.put(stationName, new ArrayList<>());
+		                        }
+		                        stationToLines.get(stationName).add(currentLine);
+		                    }
+		                }
+		            }
+		        }
 
-    public double getDistance(String lineName, String station1, String station2)
-    {
-        return map.get(lineName).get(station1) + map.get(lineName).get(station2);
-    }
-    
-    public double getDistance2(String lineName, String station1, String station2)
-    {
-        return map2.get(lineName).get(station1).distance + map2.get(lineName).get(station2).distance;
-    }
-    
-    public Set<String> getTransferStations()
-    {
-        Map<String, Set<String>> stationLines = new HashMap<>();
-        for (String line : map.keySet()) 
-        {
-            for (String station : map.get(line).keySet()) 
-            {
-                stationLines.putIfAbsent(station, new HashSet<>());
-                stationLines.get(station).add(line);
-            }
-        }
+		        // 过滤出至少有两条线路通过的站点
+		        for (Map.Entry<String, List<String>> entry : stationToLines.entrySet()) 
+		        {
+		            if (entry.getValue().size() > 1) 
+		            {
+		                TransferStation ts = new TransferStation(entry.getKey());
+		                ts.getLines().addAll(entry.getValue());
+		                transferStations.add(ts);
+		            }
+		        }
 
-        Set<String> transferStations = new HashSet<>();
-        for (String station : stationLines.keySet()) 
-        {
-            if (stationLines.get(station).size() > 1) 
-            {
-                StringBuilder sb = new StringBuilder();
-                sb.append("<").append(station).append(", <");
-                for (String line : stationLines.get(station))
-                {
-                    sb.append(line).append(" 号线、");
-                }
-                sb.setLength(sb.length() - 1); // Remove the last "、"
-                sb.append(">>");
-                transferStations.add(sb.toString());
-            }
-        }
+		        return transferStations;
+		    }
+		
+		  /**
+		     * 获取距离指定站点小于n的所有站点集合
+		     *
+		     * @param stationName 指定的站点名
+		     * @param n           最大距离
+		     * @return 站点集合
+		     */
+		    public List<Object[]> getNearbyStations(String stationName, double n) {
+		        List<Object[]> nearbyStations = new ArrayList<>();
+		        for (Route route : this.routes) {
+		            for (Interval interval : route.getIntevals()) {
+		                for (String stop : interval.getStops()) {
+		                    if (stop.equals(stationName)) {
+		                        for (Interval otherInterval : route.getIntevals()) {
+		                            for (String otherStop : otherInterval.getStops()) {
+		                                if (!otherStop.equals(stationName) && Math.abs(interval.getDistance() - otherInterval.getDistance()) <= n
+		                                		&& interval.getDistance() - otherInterval.getDistance() > 0) {
+		                                    Object[] stationInfo = {otherStop, route.getName(), Math.abs(interval.getDistance() - otherInterval.getDistance())};
+		                                    nearbyStations.add(stationInfo);
+		                                }
+		                            }
+		                        }
+		                    }
+		                }
+		            }
+		        }
+		        // 去重处理
+		        Set<Object[]> uniqueStations = new HashSet<>(nearbyStations);
+		        // 将Set转换回List
+		        List<Object[]> distinctNearbyStations = new ArrayList<>(uniqueStations);
 
-        return transferStations;
-    }
+		        return distinctNearbyStations;
+		    }
+		  
+		public static void main(String[] args) 
+		{
+			Test t = new Test();
+			t.readFile();
+			 for (Route route : t.routes) {
+			        System.out.println("线路: " + route.getName());
+			        for (Interval interval : route.getIntevals()) {
+			            System.out.println(  Arrays.toString(interval.getStops()) + "，距离: " + interval.getDistance());
+			        }
+			    }
+		      List<TransferStation> transferStations = t.identifyTransferStations();
+		        for (TransferStation ts : transferStations)
+		        {
+		            System.out.println(ts);
+		        }
+		    try (Scanner scanner = new Scanner(System.in))
+		    	{
+		            System.out.print("请输入站点名：");
+		            String stationName = scanner.next();
+		            System.out.print("请输入距离限制：");
+		            double n = scanner.nextDouble();
 
-    public String queryStationsFormatted(String stationName, double maxDistance) {
-        List<String> result = new ArrayList<>();
-        for (Map<String, Double> lineMap : map.values()) {
-            for (Map.Entry<String, Double> entry : lineMap.entrySet()) {
-                if (entry.getKey().equals(stationName)) {
-                    for (Map.Entry<String, Double> otherEntry : lineMap.entrySet()) {
-                        if (!entry.getKey().equals(otherEntry.getKey())) {
-                            double distance = entry.getValue() + otherEntry.getValue();
-                            if (distance <= maxDistance) {
-                                String lineName = map.keySet().stream()
-                                    .filter(key -> lineMap == map.get(key))
-                                    .findFirst()
-                                    .orElse("");
-                                result.add("<" + otherEntry.getKey() + "，" + lineName + "号线，距离：" + distance + ">");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return result.isEmpty() ? "没有找到距离为 " + maxDistance + " 公里以内的站点。" : result.toString();
-    }
-    
-    
-    public static class Node 
-    {
-        String name;
-        Set<Node> neighbors;
-		private double distance;
-
-        public Node(String name, double distance) {
-            this.name = name;
-            this.distance = distance;
-            this.neighbors = new HashSet<>();
-        }
-    }
-    public List<List<String>> getAllPaths(String start, String end) {
-        Map<String, Node> allNodes = new HashMap<>();
-        for (Map<String, Node> lineNodes : map2.values()) {
-            allNodes.putAll(lineNodes);
-        }
-        return dfs(allNodes, start, end, new HashSet<>(), new ArrayList<>());
-    }
-
-    private List<List<String>> dfs(Map<String, Node> nodes, String current, String end, Set<String> visited, List<String> path) {
-        visited.add(current);
-        path.add(current);
-
-        if (current.equals(end)) {
-            return Arrays.asList(new ArrayList<>(path));
-        }
-
-        List<List<String>> paths = new ArrayList<>();
-        Node currentNode = nodes.get(current);
-        for (Node neighbor : currentNode.neighbors) {
-            if (!visited.contains(neighbor.name)) {
-                paths.addAll(dfs(nodes, neighbor.name, end, visited, path));
-            }
-        }
-
-        path.remove(path.size() - 1);
-        visited.remove(current);
-        return paths;
-    }
-    @Override
-    public String toString()
-    {
-        return this.map.values().toString();
-    }
-    
-    
-    public static void main(String[] args)
-    {
-        Test subwayMap = new Test();
-        
-        try (BufferedReader br = new BufferedReader(new FileReader("subway.txt")))
-        {
-            String line;
-            String currentLine = null;
-            while ((line = br.readLine()) != null) 
-            {
-                if (line.contains("号线站点间距")) 
-                {
-                    currentLine = line.split("号线站点间距")[0];
-                    subwayMap.addLine(currentLine);
-                    subwayMap.addLine2(currentLine);
-                } 
-                else if (line.contains("阳逻线站点间距")) 
-                {
-                	currentLine = line.split("线站点间距")[0];
-                    subwayMap.addLine(currentLine);
-                    subwayMap.addLine2(currentLine);
-                }
-                else if (line.contains("---") || line.contains("—")) 
-                {
-                        String separator = line.contains("---") ? "---" : "—";
-                    String[] parts = line.split(separator);
-                    String station1 = parts[0].trim();
-                    String station2 = parts[1].split("\t")[0].trim();
-                    double distance = Double.parseDouble(parts[1].split("\t")[1].trim());
-                    subwayMap.addStation(currentLine, station1, distance);
-                    subwayMap.addStation2(currentLine, station1,distance);
-                    subwayMap.addStation(currentLine, station2, distance);
-                }
-            }
-        } 
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-        System.out.println(subwayMap);
-        
-        //第一问
-        Set<String> transferStations = subwayMap.getTransferStations();
-        System.out.println("Transfer Stations:");
-        for (String station : transferStations)
-        {
-            System.out.println(station);
-        }
-        
-        //第二问
-        Scanner scanner = new Scanner(System.in);
-        try 
-        {
-        	System.out.print("请输入站点名称: ");
-            String stationNameInput = scanner.nextLine().trim();
-
-            System.out.print("请输入最大距离（公里）: ");
-            if (!scanner.hasNextDouble()) {
-                System.out.println("输入的最大距离不合法，请输入一个数字！");
-                scanner.close();
-                return;
-            }
-            double maxDistance = scanner.nextDouble();
-            scanner.nextLine(); // 消耗掉nextDouble后的换行符
-            
-            String formattedResult = subwayMap.queryStationsFormatted(stationNameInput, maxDistance);
-            System.out.println(stationNameInput+"，最大距离为 "+maxDistance+" 的站点为:");
-            System.out.println(formattedResult);
-
-        } 
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        
-        }
-        // 第三问
-        System.out.print("请输入起点站名称: ");
-        String startStation = scanner.nextLine().trim();
-
-        System.out.print("请输入终点站名称: ");
-        String endStation = scanner.nextLine().trim();
-
-        List<List<String>> paths = subwayMap.getAllPaths(startStation, endStation);
-        System.out.println("从 " + startStation + " 到 " + endStation + " 的路径有:");
-        for (List<String> path : paths) 
-        {
-            System.out.println(path);
-        }
-        scanner.close();
-    }
+		            List<Object[]> nearbyStations = t.getNearbyStations(stationName, n);
+		            System.out.println("距离" + stationName + "站小于" + n + "的所有站点为：");
+		            for (Object[] stationInfo : nearbyStations) 
+		            {
+		                System.out.println("<" + stationInfo[0] + ", " + stationInfo[1] + ", " + stationInfo[2] + ">");
+		            }
+		        } 
+		    catch (InputMismatchException e) 
+		    	{
+		            System.out.println("输入不合规，请重新运行程序并输入正确的站点名和距离限制。");
+		        }
+		 }
+		
 }
