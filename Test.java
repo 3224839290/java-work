@@ -110,16 +110,24 @@ public class Test
 		     * @param n           最大距离
 		     * @return 站点集合
 		     */
-		    public List<Object[]> getNearbyStations(String stationName, double n) {
+		    public List<Object[]> getNearbyStations(String stationName, double n) 
+		    {
 		        List<Object[]> nearbyStations = new ArrayList<>();
-		        for (Route route : this.routes) {
-		            for (Interval interval : route.getIntevals()) {
-		                for (String stop : interval.getStops()) {
-		                    if (stop.equals(stationName)) {
-		                        for (Interval otherInterval : route.getIntevals()) {
-		                            for (String otherStop : otherInterval.getStops()) {
+		        for (Route route : this.routes) 
+		        {
+		            for (Interval interval : route.getIntevals()) 
+		            {
+		                for (String stop : interval.getStops()) 
+		                {
+		                    if (stop.equals(stationName)) 
+		                    {
+		                        for (Interval otherInterval : route.getIntevals()) 
+		                        {
+		                            for (String otherStop : otherInterval.getStops())
+		                            {
 		                                if (!otherStop.equals(stationName) && Math.abs(interval.getDistance() - otherInterval.getDistance()) <= n
-		                                		&& interval.getDistance() - otherInterval.getDistance() > 0) {
+		                                		&& interval.getDistance() - otherInterval.getDistance() > 0) 
+		                                {
 		                                    Object[] stationInfo = {otherStop, route.getName(), Math.abs(interval.getDistance() - otherInterval.getDistance())};
 		                                    nearbyStations.add(stationInfo);
 		                                }
@@ -141,18 +149,23 @@ public class Test
 		{
 			Test t = new Test();
 			t.readFile();
-			 for (Route route : t.routes) {
+			 for (Route route : t.routes) 
+			 {
 			        System.out.println("线路: " + route.getName());
-			        for (Interval interval : route.getIntevals()) {
+			        for (Interval interval : route.getIntevals()) 
+			        {
 			            System.out.println(  Arrays.toString(interval.getStops()) + "，距离: " + interval.getDistance());
 			        }
-			    }
+			  }
+			 //第一问
 		      List<TransferStation> transferStations = t.identifyTransferStations();
 		        for (TransferStation ts : transferStations)
 		        {
 		            System.out.println(ts);
 		        }
-		    try (Scanner scanner = new Scanner(System.in))
+		     //第二问
+		        Scanner scanner = new Scanner(System.in);
+		    try 
 		    	{
 		            System.out.print("请输入站点名：");
 		            String stationName = scanner.next();
@@ -165,11 +178,39 @@ public class Test
 		            {
 		                System.out.println("<" + stationInfo[0] + ", " + stationInfo[1] + ", " + stationInfo[2] + ">");
 		            }
+
 		        } 
 		    catch (InputMismatchException e) 
 		    	{
 		            System.out.println("输入不合规，请重新运行程序并输入正确的站点名和距离限制。");
 		        }
+		    
+		    //第三问
+		    SubwayGraph graph = new SubwayGraph();
+		    for (Route route : t.routes)
+		    {
+		    	for (Interval interval : route.getIntevals())
+		    	{
+		    			graph.addConnection(interval.getStops()[0],interval.getStops()[1]);
+		    	}
+		    }
+		    
+	           System.out.print("请输入起始站点名：");
+	            String startStation = scanner.next();
+	            System.out.print("请输入终点站点名：");
+	            String endStation = scanner.next();
+	    	
+	            List<List<String>> paths = graph.findAllPaths(startStation, endStation);
+	            for (List<String> path : paths) 
+	            {
+	            	System.out.println(path);
+	            }
+
+		    
+		
+		    
+		    
+		    scanner.close();
 		 }
 		
 }
